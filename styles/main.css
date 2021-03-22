@@ -1,0 +1,58 @@
+td {
+    min-width: auto !important;
+    text-align: center !important;
+}
+
+.count-down {
+    font-size: 30px;
+    display: block;
+    width: 370px;
+    height: 60px;
+    position: fixed;
+    top: 24%;
+    left: 40%;
+    z-index: 1000;
+    color: #f5dfb3;
+}
+
+.filter-form {
+    width: 100%;
+    position: fixed;
+    top: 5px;
+    padding: 4px 4px 4px 20px;
+    border: 1px solid white;
+    z-index: 10000;
+    background: wheat;
+    right: 10px;
+    height: 225px;
+}
+
+.form-bound {
+    display: inline;
+    margin: 10px 5px;
+}
+
+.inpt {
+    padding: 5px;
+    margin-right: 5px;
+}
+
+.filter-form input {
+    margin-right: 5px;
+}
+
+.label-tag {
+    margin-right: 2px;
+}
+
+.row {
+    border-bottom: 1px dotted green;
+}
+
+.my-table {
+
+}
+
+.my-table th {
+    padding: 5px 40px;
+}
