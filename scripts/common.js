@@ -317,9 +317,12 @@ function getTable(headerConfig, bodyConfig) {
     return table;
 }
 
-function getATag(id, className, text, href = 'javascript:;', callbackonclick = null) {
+function getATag(id, className, text, href = 'javascript:;', callbackonclick = null, target = null) {
     let aTag = newTag('a', id, null, className, null, text)
     aTag.href = href
+    if (target != null) {
+        aTag.target = target
+    }
     if (callbackonclick !== null) {
         aTag.onclick = callbackonclick
     }
@@ -352,11 +355,13 @@ function initTrsTagFromTrade() {
         let className = 'highlightable ' + (tradeItem.value <= tradeItem.lowest ? 'bg-up' : 'bg-down')
         let percent = Math.round((tradeItem.value - tradeItem.lowest) * 100) / 100
         let tds = [
-            { type: 'td', id: `stockId-${validId}`, name: null, class: '', value: null, text: validId, eventName: 'onclick', event: () => {
+            { type: 'td', id: `stockId-${validId}`, name: null, class: '', value: null, text: '', eventName: 'onclick', event: () => {
                 let trsTag = document.getElementById(validId);
                 let firstTd = trsTag.getElementsByTagName("td")[0];
                     firstTd.click();
-                } },
+                }, children: [
+                    getATag(null, null, `${validId}`, `https://iboard.ssi.com.vn/chart/?symbol=${validId}&language=vi&theme=dark`, null, '_blank')
+                ] },
             { type: 'td', id: `myPrice-${validId}`, name: null, class: className, value: null, text: tradeItem.value },
             { type: 'td', id: `percentVal-${validId}`, name: null, class: '', value: null, text: percent },
             { type: 'td', id: `lowestPrice-${validId}`, name: null, class: '', value: null, text: tradeItem.lowest },
