@@ -17,21 +17,20 @@ function filterValue() {
     let filterBy = document.getElementById("filterBy").value
     let fromVal = document.getElementById("filterFrom").value
     let toVal = document.getElementById("filterTo").value
+    let stockType = document.getElementById("stockType").value
+    let removeBy = document.getElementById("removeBy").value
+
     document.querySelectorAll('tr').forEach(item => {
         item.removeAttribute('class')
         item.removeAttribute('data-scroll-page')
     })
-
-    if (fromVal === '' && toVal === '') {
-        return;
-    }
 
     CM.data.forEach(item => {
         item.node.style.display = "none"
     })
 
     let fromValInFloat = -1
-    let toValInfloat = -1
+    let toValInfloat = 10000
     try {
         fromValInFloat = parseFloat(fromVal)
     } catch (ex) {}
@@ -45,6 +44,22 @@ function filterValue() {
             return;
         }
         if (toVal !== '' && itemVal > toValInfloat) {
+            return;
+        }
+        if (stockType === 'noWarrant' && item.id.length !== 3) {
+            //hide me
+            return;
+        }
+        if (removeBy === 'whiteInAll' && item.isWriteInAll()) {
+            //hide me
+            return;
+        }
+        if (removeBy === 'whiteInBuy' && item.isWhiteInBuy()) {
+            //hide me
+            return;
+        }
+        if (removeBy === 'whiteInSold' && item.isWhiteInSold()) {
+            //hide me
             return;
         }
         item.node.style = 'inherit'
@@ -178,6 +193,16 @@ function getInput(id, name, className, value, text, placeholder, onchangecallbac
     return addLabel(input, label)
 }
 
+function getCheckbox(id, name, className, value, text, placeholder, onchangecallback, label = null) {
+    let checkbox = newTag('input', id, name, className, value, text, placeholder)
+    checkbox.style.display = "inline";
+    checkbox.type = "checkbox";
+    if (onchangecallback !== null) {
+        checkbox.onchange = onchangecallback
+    }
+    return addLabel(checkbox, label)
+}
+
 function getButton(id, name, className, text, callbackonclick = null) {
     let tag = newTag('button', id, name, className, null, text, null)
     if (callbackonclick !== null) {
@@ -188,11 +213,8 @@ function getButton(id, name, className, text, callbackonclick = null) {
 
 function getFloatByClassName(tag, className) {
     let child = tag.querySelector("." + className)
-    if (child === null) {
-        return 0
-    }
-    if (child.textContent === '') {
-        return 0
+    if (child === null || child.textContent === '') {
+        return -1
     }
     return parseFloat(child.textContent.replaceAll(',', ''))
 }
@@ -208,7 +230,17 @@ function initFirstRow() {
         getSelect('displayAs', 'display-as', 'display-as inpt', [
             {value: 'normal', text: 'Đơn giản', selected: false},
             {value: 'detail', text: 'Chi tiết', selected: true},
-        ], changeTheme, 'Chế độ hiển thị:'),
+        ], changeTheme, 'Chế độ hiển thị: '),
+        getSelect('stockType', 'stock-type', 'stock-type inpt', [
+            {value: 'all', text: 'Tất cả', selected: true},
+            {value: 'noWarrant', text: 'Không có chứng quyền', selected: false},
+        ], filterValue, 'Hiển thị: '),
+        getSelect('removeBy', 'remove-by', 'remove-by inpt', [
+            {value: 'all', text: 'Mặc định', selected: true},
+            {value: 'whiteInAll', text: 'Mã không giao dịch', selected: false},
+            {value: 'whiteInSold', text: 'Trắng bên bán', selected: false},
+            {value: 'whiteInBuy', text: 'Trắng bên mua', selected: false},
+        ], filterValue, 'Loại bỏ: '),
         getSelect('filterBy', 'filterBy', 'filter-by inpt', [
             {value: 'ceiling', text: 'Giá trần', selected: false},
             {value: 'floor', text: 'Giá sàn', selected: false},
@@ -217,12 +249,12 @@ function initFirstRow() {
             {value: 'lowest', text: 'Giá thấp nhất', selected: false},
             {value: 'nmTotalTradedQty', text: 'Tổng khối lượng', selected: false},
         ], filterValue, 'Lọc theo:'),
-        getInput('filterFrom', 'from', null, null, null, '', filterValue, "Từ: "),
-        getInput('filterTo', 'to', null, null, null, '', filterValue, "Đến: "),
+        getInput('filterFrom', 'from', 'w75', null, null, '', filterValue, "Từ: "),
+        getInput('filterTo', 'to', 'w75', null, null, '', filterValue, "Đến: "),
         getButton('btnFilter', null, 'btn btn-filter', 'Lọc', filterValue),
 
-        getInput('stockId', 'to', null, null, null, '', null, "Mã CK: "),
-        getInput('priceThatBought', 'to', null, null, null, '', null, "Giá đã mua: "),
+        getInput('stockId', 'to', 'w75', null, null, '', null, "Mã CK: "),
+        getInput('priceThatBought', 'to', 'w75', null, null, '', null, "Giá đã mua: "),
         getButton('btnAdd', null, 'btn btn-add', 'Thêm mã', addNewStock),
     ]
 
@@ -298,6 +330,9 @@ function getTrTag(tds, className = null) {
     let trTag = newTag('tr', null, null, className, null, null)
     tds.forEach(item => {
         let tdTag = newTag(item.type, item.id, null, item.class, null, item.text)
+        if (item.eventName !== undefined) {
+            tdTag[item.eventName] = item.event
+        }
         if (item.children !== undefined && item.children !== null) {
             item.children.forEach(child => tdTag.appendChild(child))
         }
@@ -317,7 +352,11 @@ function initTrsTagFromTrade() {
         let className = 'highlightable ' + (tradeItem.value <= tradeItem.lowest ? 'bg-up' : 'bg-down')
         let percent = Math.round((tradeItem.value - tradeItem.lowest) * 100) / 100
         let tds = [
-            { type: 'td', id: `stockId-${validId}`, name: null, class: '', value: null, text: validId },
+            { type: 'td', id: `stockId-${validId}`, name: null, class: '', value: null, text: validId, eventName: 'onclick', event: () => {
+                let trsTag = document.getElementById(validId);
+                let firstTd = trsTag.getElementsByTagName("td")[0];
+                    firstTd.click();
+                } },
             { type: 'td', id: `myPrice-${validId}`, name: null, class: className, value: null, text: tradeItem.value },
             { type: 'td', id: `percentVal-${validId}`, name: null, class: '', value: null, text: percent },
             { type: 'td', id: `lowestPrice-${validId}`, name: null, class: '', value: null, text: tradeItem.lowest },
@@ -369,14 +408,38 @@ function initData() {
             name: trItem.querySelector(".stockSymbol").getAttribute("data-tooltip"),
             ceiling: getFloatByClassName(trItem, 'ceiling'),
             floor: getFloatByClassName(trItem, "floor"),
+
+            best3Bid: getFloatByClassName(trItem, "best3Bid"),
+            best3BidVol: getFloatByClassName(trItem, "best3BidVol"),
+            best2Bid: getFloatByClassName(trItem, "best2Bid"),
+            best2BidVol: getFloatByClassName(trItem, "best2BidVol"),
+            best1Bid: getFloatByClassName(trItem, "best1Bid"),
+            best1BidVol: getFloatByClassName(trItem, "best1BidVol"),
+
+            matchedPrice: getFloatByClassName(trItem, "matchedPrice"),
+            matchedVolume: getFloatByClassName(trItem, "matchedVolume"),
+
+            best1Offer: getFloatByClassName(trItem, "best1Offer"),
+            best1OfferVol: getFloatByClassName(trItem, "best1OfferVol"),
+            best2Offer: getFloatByClassName(trItem, "best2Offer"),
+            best2OfferVol: getFloatByClassName(trItem, "best2OfferVol"),
+            best3Offer: getFloatByClassName(trItem, "best3Offer"),
+            best3OfferVol: getFloatByClassName(trItem, "best3OfferVol"),
+
             refPrice: getFloatByClassName(trItem, "refPrice"),
             highest: getFloatByClassName(trItem, "highest"),
             lowest: getFloatByClassName(trItem, "lowest"),
-            best1Offer: getFloatByClassName(trItem, "best1Offer"),
-            best2Offer: getFloatByClassName(trItem, "best2Offer"),
-            best3Offer: getFloatByClassName(trItem, "best3Offer"),
             nmTotalTradedQty: getFloatByClassName(trItem, "nmTotalTradedQty"),
-            node: trItem
+            node: trItem,
+            isWhiteInBuy: function() {
+                return this.best1Bid <= 0 && this.best2Bid <= 0 && this.best3Bid <= 0;
+            },
+            isWhiteInSold: function () {
+                return this.best1Offer <= 0 && this.best2Offer <= 0 && this.best3Offer <= 0;
+            },
+            isWriteInAll: function () {
+                return this.isWhiteInBuy() && this.isWhiteInSold();
+            }
         })
     })
 }

@@ -56,3 +56,7 @@ td {
 .my-table th {
     padding: 5px 40px;
 }
+
+.w75 {
+    width: 75px;
+}
