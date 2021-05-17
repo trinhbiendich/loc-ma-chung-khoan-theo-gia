@@ -12,6 +12,9 @@ var TD = {
     }
 };
 
+var FB_links = {
+}
+
 function apiTypeByContent(obj) {
     if (obj.photos !== undefined && obj.photos.photo !== undefined && obj.photos.photo.length !== 0) {
         return {type: TD.actionType.photoList, data: obj.photos.photo};
@@ -97,10 +100,39 @@ function processForFlickrAPI(url, data) {
     });
 }
 
+function delFbLink (elem, id) {
+    if (FB_links[id] == undefined) {
+        return;
+    }
+    delete FB_links[id];
+    $(elem).parent().remove();
+}
+
+function processForFacebook(url, data) {
+    const myUrl = url.substr(url, url.lastIndexOf("&bytestart"))
+    let id = TD.md5(myUrl);
+    if (FB_links[id] != undefined) {
+        return;
+    }
+    FB_links[id] = myUrl;
+    var html = '';
+    html += `<tr>`;
+    html += `<td>${id}</td>`;
+    html += `<td colspan="2"><a target="_blank" href="${myUrl}">${myUrl}</a></td>`;
+    html += `<td onclick="delFbLink(this, '${id}')">Del</td>`
+    html += `</tr>`;
+    $("#databody").append(html);
+}
+
 chrome.devtools.network.onRequestFinished.addListener(data => {
     let url = data.request.url;
     if (/api\.flickr\.com\/services\/rest/.test(url)) {
         processForFlickrAPI(url, data);
         return;
     }
+    if (/(video\.fpnh22-3\.fna\.fbcdn\.net)/.test(url)) {
+        processForFacebook(url, data);
+        return;
+    }
+
 });
